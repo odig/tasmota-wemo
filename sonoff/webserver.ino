@@ -330,7 +330,8 @@ void startWebserver(int type, IPAddress ipweb)
 #ifdef USE_EMULATION
       if (EMUL_WEMO == sysCfg.flag.emulation) {
         webServer->on("/upnp/control/basicevent1", HTTP_POST, handleUPnPevent);
-        webServer->on("/eventservice.xml", handleUPnPservice);
+        webServer->on("/eventservice.xml", handleUPnPServiceEventservice);
+        webServer->on("/metainfoservice.xml", handleUPnPServiceMetainfoservice);
         webServer->on("/setup.xml", handleUPnPsetupWemo);
       }
       if (EMUL_HUE == sysCfg.flag.emulation) {

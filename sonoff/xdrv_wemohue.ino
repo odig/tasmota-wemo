@@ -34,6 +34,14 @@ uint32_t portMulticast = 1900;      // Multicast address and port
 /*********************************************************************************************\
  * WeMo UPNP support routines
 \*********************************************************************************************/
+const String UDP_DEVICE_PATTERN_1 = "urn:belkin:device:**";
+const String UDP_DEVICE_PATTERN_2 = "urn:belkin:device:controllee:1";
+const String UDP_DEVICE_PATTERN_3 = "urn:belkin:service:basicevent:1";
+const String UDP_ROOT_DEVICE_PATTERN =  "upnp:rootdevice";
+
+const String UDP_DEVICE_RESPONSE_1 = "urn:Belkin:device:**";
+const String UDP_DEVICE_RESPONSE_2 = "urn:Belkin:device:controllee:1";
+const String UDP_DEVICE_RESPONSE_3 = "urn:Belkin:service:basicevent:1";
 
 const char WEMO_MSEARCH[] PROGMEM =
   "HTTP/1.1 200 OK\r\n"
@@ -44,8 +52,8 @@ const char WEMO_MSEARCH[] PROGMEM =
   "OPT: \"http://schemas.upnp.org/upnp/1/0/\"; ns=01\r\n"
   "01-NLS: b9200ebb-736d-4b93-bf03-835149d13983\r\n"
   "SERVER: Unspecified, UPnP/1.0, Unspecified\r\n"
-  "ST: urn:Belkin:device:**\r\n"
-  "USN: uuid:{r2}::urn:Belkin:device:**\r\n"
+  "ST: {r3}\r\n"
+  "USN: uuid:{r2}::{r3}\r\n"
   "X-User-Agent: redsonic\r\n"
   "\r\n";
 
@@ -65,7 +73,7 @@ String wemo_UUID()
   return String(uuid);
 }
 
-void wemo_respondToMSearch()
+void wemo_respondToMSearch(String pattern)
 {
   char message[TOPSZ];
 
@@ -73,14 +81,19 @@ void wemo_respondToMSearch()
     String response = FPSTR(WEMO_MSEARCH);
     response.replace("{r1}", WiFi.localIP().toString());
     response.replace("{r2}", wemo_UUID());
+    response.replace("{r3}", pattern);
     portUDP.write(response.c_str());
     portUDP.endPacket();
+    //addLog_P(LOG_LEVEL_DEBUG_MORE, "RESPONSE-RESPONSE-RESPONSE-RESPONSE-RESPONSE-RESPONSE-RESPONSE-START");
+    //addLog_P(LOG_LEVEL_DEBUG_MORE, response.c_str());
+    //addLog_P(LOG_LEVEL_DEBUG_MORE, "RESPONSE-RESPONSE-RESPONSE-RESPONSE-RESPONSE-RESPONSE-RESPONSE-END");
     snprintf_P(message, sizeof(message), PSTR(D_RESPONSE_SENT));
   } else {
     snprintf_P(message, sizeof(message), PSTR(D_FAILED_TO_SEND_RESPONSE));
+    ;
   }
-  snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_UPNP D_WEMO " %s " D_TO " %s:%d"),
-    message, portUDP.remoteIP().toString().c_str(), portUDP.remotePort());
+  snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_UPNP D_WEMO " %s " D_TO " %s:%d (%s)"),
+    message, portUDP.remoteIP().toString().c_str(), portUDP.remotePort(), pattern.c_str());
   addLog(LOG_LEVEL_DEBUG);
 }
 
@@ -220,8 +233,17 @@ void pollUDP()
 //        addLog_P(LOG_LEVEL_DEBUG_MORE, PSTR("UDP: M-SEARCH Packet received"));
 //        addLog_P(LOG_LEVEL_DEBUG_MORE, request.c_str());
 
-        if ((EMUL_WEMO == sysCfg.flag.emulation) && (request.indexOf(F("urn:belkin:device:**")) > 0)) {
-          wemo_respondToMSearch();
+        if ((EMUL_WEMO == sysCfg.flag.emulation) && (request.indexOf(UDP_DEVICE_PATTERN_1) > 0)) {
+            wemo_respondToMSearch(UDP_DEVICE_RESPONSE_1);
+        }
+        else if ((EMUL_WEMO == sysCfg.flag.emulation) && (request.indexOf(UDP_DEVICE_PATTERN_2) > 0)) {
+            wemo_respondToMSearch(UDP_DEVICE_RESPONSE_2);
+        }
+        else if ((EMUL_WEMO == sysCfg.flag.emulation) && (request.indexOf(UDP_DEVICE_PATTERN_3) > 0)) {
+            wemo_respondToMSearch(UDP_DEVICE_RESPONSE_3);
+        }
+        else if ((EMUL_WEMO == sysCfg.flag.emulation) && (request.indexOf(UDP_ROOT_DEVICE_PATTERN) > 0)) {
+            wemo_respondToMSearch(UDP_DEVICE_RESPONSE_3);
         }
         else if ((EMUL_HUE == sysCfg.flag.emulation) &&
                 ((request.indexOf(F("st:urn:schemas-upnp-org:device:basic:1")) > 0) ||
@@ -239,9 +261,86 @@ void pollUDP()
 /*********************************************************************************************\
  * Wemo web server additions
 \*********************************************************************************************/
+/*
+const char WEMO_SETUP_XML[] PROGMEM =
+  "<?xml version=\"1.0\"?>"
+  "<root>"
+    "<device>"
+      "<deviceType>urn:Belkin:device:controllee:1</deviceType>"
+      "<friendlyName>{x1}</friendlyName>"
+      "<manufacturer>Belkin International Inc.</manufacturer>"
+      "<modelName>Sonoff Socket</modelName>"
+      "<modelNumber>3.1415</modelNumber>"
+      "<UDN>uuid:{x2}</UDN>"
+      "<serialNumber>{x3}</serialNumber>"
+      "<binaryState>0</binaryState>"
+      "<serviceList>"
+        "<service>"
+          "<serviceType>urn:Belkin:service:basicevent:1</serviceType>"
+          "<serviceId>urn:Belkin:serviceId:basicevent1</serviceId>"
+          "<controlURL>/upnp/control/basicevent1</controlURL>"
+          "<eventSubURL>/upnp/event/basicevent1</eventSubURL>"
+          "<SCPDURL>/eventservice.xml</SCPDURL>"
+        "</service>"
+        "<service>"
+            "<serviceType>urn:Belkin:service:metainfo:1</serviceType>"
+            "<serviceId>urn:Belkin:serviceId:metainfo1</serviceId>"
+            "<controlURL>/upnp/control/metainfo1</controlURL>"
+            "<eventSubURL>/upnp/event/metainfo1</eventSubURL>"
+            "<SCPDURL>/metainfoservice.xml</SCPDURL>"
+        "</service>"
+      "</serviceList>"
+    "</device>"
+  "</root>\r\n"
+  "\r\n";
+*/
 
+const char WEMO_SETUP_XML[] PROGMEM =
+  "<?xml version=\"1.0\"?>"
+  "<root>"
+      "<specVersion><major>1</major><minor>0</minor></specVersion>"
+      "<device>"
+          "<deviceType>urn:Belkin:device:controllee:1</deviceType>"
+          "<friendlyName>{x1}</friendlyName>"
+          "<manufacturer>Belkin International Inc.</manufacturer>"
+          "<modelName>Socket</modelName>"
+          "<modelNumber>1.0</modelNumber>"
+          "<UDN>uuid:Socket-1_0-{x2}</UDN>"
+          "<serialNumber>{x3}</serialNumber>"
+          "<serviceList>"
+              "<service>"
+                  "<serviceType>urn:Belkin:service:basicevent:1</serviceType>"
+                  "<serviceId>urn:Belkin:serviceId:basicevent1</serviceId>"
+                  "<controlURL>/upnp/control/basicevent1</controlURL>"
+                  "<eventSubURL>/upnp/event/basicevent1</eventSubURL>"
+                  "<SCPDURL>/eventservice.xml</SCPDURL>"
+              "</service>"
+              "<service>"
+                  "<serviceType>urn:Belkin:service:metainfo:1</serviceType>"
+                  "<serviceId>urn:Belkin:serviceId:metainfo1</serviceId>"
+                  "<controlURL>/upnp/control/metainfo1</controlURL>"
+                  "<eventSubURL>/upnp/event/metainfo1</eventSubURL>"
+                  "<SCPDURL>/metainfoservice.xml</SCPDURL>"
+              "</service>"
+          "</serviceList>"
+      "</device>"
+  "</root>\r\n"
+  "\r\n";
+
+const char WEMO_METAINFOSERVICE_XML[] PROGMEM =
+  "<?xml version=\"1.0\"?>"
+  "<scpd xmlns=\"urn:Belkin:service-1-0\">"
+      "<specVersion><major>1</major><minor>0</minor></specVersion>"
+      "<actionList></actionList>"
+      "<serviceStateTable></serviceStateTable>"
+  "</scpd>\r\n"
+  "\r\n";
+
+ /*
 const char WEMO_EVENTSERVICE_XML[] PROGMEM =
+"<?xml version=\"1.0\"?>"
   "<?scpd xmlns=\"urn:Belkin:service-1-0\"?>"
+  "<specVersion><major>1</major><minor>0</minor></specVersion>"
   "<actionList>"
     "<action>"
       "<name>SetBinaryState</name>"
@@ -268,33 +367,62 @@ const char WEMO_EVENTSERVICE_XML[] PROGMEM =
     "</action>"
   "</scpd>\r\n"
   "\r\n";
-const char WEMO_SETUP_XML[] PROGMEM =
-  "<?xml version=\"1.0\"?>"
-  "<root>"
-    "<device>"
-      "<deviceType>urn:Belkin:device:controllee:1</deviceType>"
-      "<friendlyName>{x1}</friendlyName>"
-      "<manufacturer>Belkin International Inc.</manufacturer>"
-      "<modelName>Sonoff Socket</modelName>"
-      "<modelNumber>3.1415</modelNumber>"
-      "<UDN>uuid:{x2}</UDN>"
-      "<serialNumber>{x3}</serialNumber>"
-      "<binaryState>0</binaryState>"
-      "<serviceList>"
-        "<service>"
-          "<serviceType>urn:Belkin:service:basicevent:1</serviceType>"
-          "<serviceId>urn:Belkin:serviceId:basicevent1</serviceId>"
-          "<controlURL>/upnp/control/basicevent1</controlURL>"
-          "<eventSubURL>/upnp/event/basicevent1</eventSubURL>"
-          "<SCPDURL>/eventservice.xml</SCPDURL>"
-        "</service>"
-      "</serviceList>"
-    "</device>"
-  "</root>\r\n"
-  "\r\n";
+*/
+
+
+const char WEMO_EVENTSERVICE_XML[] PROGMEM =
+"<?xml version=\"1.0\"?>"
+"<scpd xmlns=\"urn:Belkin:service-1-0\">"
+    "<specVersion><major>1</major><minor>0</minor></specVersion>"
+    "<actionList>"
+        "<action>"
+            "<name>SetBinaryState</name>"
+            "<argumentList>"
+                "<argument>"
+                    "<retval />"
+                    "<name>BinaryState</name>"
+                    "<relatedStateVariable>BinaryState</relatedStateVariable>"
+                    "<direction>in</direction>"
+                "</argument>"
+            "</argumentList>"
+        "</action>"
+        "<action>"
+            "<name>GetBinaryState</name>"
+            "<argumentList>"
+                "<argument>"
+                    "<retval/>"
+                    "<name>BinaryState</name>"
+                    "<relatedStateVariable>BinaryState</relatedStateVariable>"
+                    "<direction>out</direction>"
+                "</argument>"
+            "</argumentList>"
+        "</action>"
+    "</actionList>"
+    "<serviceStateTable>"
+        "<stateVariable sendEvents=\"yes\">"
+            "<name>BinaryState</name>"
+            "<dataType>Boolean</dataType>"
+            "<defaultValue>0</defaultValue>"
+        "</stateVariable>"
+    "</serviceStateTable>"
+"</scpd>\r\n"
+"\r\n";
+
+const char WEMO_QUERY_TEMPLATE_XML[] PROGMEM =
+    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n"
+	"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n"
+    	"<s:Body>\r\n"
+        	"<u:SetBinaryState xmlns:u=\"urn:Belkin:service:basicevent:1\">\r\n"
+        	   "<BinaryState>{x1}</BinaryState>\r\n"
+        	"</u:SetBinaryState>\r\n"
+    	"</s:Body>\r\n"
+	"</s:Envelope>\r\n"
+    "\r\n";
+
 
 /********************************************************************************************/
 
+/*
 void handleUPnPevent()
 {
   addLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, PSTR(D_WEMO_BASIC_EVENT));
@@ -309,22 +437,60 @@ void handleUPnPevent()
   }
   webServer->send(200, FPSTR(HDR_CTYPE_PLAIN), "");
 }
+*/
 
-void handleUPnPservice()
+void handleUPnPevent()
 {
-  addLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, PSTR(D_WEMO_EVENT_SERVICE));
-  webServer->send(200, FPSTR(HDR_CTYPE_PLAIN), FPSTR(WEMO_EVENTSERVICE_XML));
+  String state="0";
+  String xml = FPSTR(WEMO_QUERY_TEMPLATE_XML);
+  addLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, PSTR("WEMO_QUERY_TEMPLATE_XML"));
+  String request = webServer->arg(0);
+  if (request.indexOf(F("State>1</Binary")) > 0) {
+//    do_cmnd_power(1, 1);
+    do_cmnd_power(Maxdevice, 1);
+    state="1";
+  }
+  if (request.indexOf(F("State>0</Binary")) > 0) {
+//    do_cmnd_power(1, 0);
+    do_cmnd_power(Maxdevice, 0);
+    state="0";
+  }
+  xml.replace("{x1}", state);
+  webServer->send(200, FPSTR(HDR_CTYPE_PLAIN), xml);
+  snprintf_P(log_data, sizeof(log_data), PSTR("WEMO WEMO_QUERY_TEMPLATE_XML send: " "%s"), xml.c_str());
+  addLog(LOG_LEVEL_DEBUG);
+}
+
+
+void handleUPnPServiceEventservice()
+{
+  String xml = FPSTR(WEMO_EVENTSERVICE_XML);
+  addLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, PSTR("WEMO_EVENTSERVICE_XML"));
+  webServer->send(200, FPSTR(HDR_CTYPE_PLAIN), xml);
+  snprintf_P(log_data, sizeof(log_data), PSTR("WEMO WEMO_EVENTSERVICE_XML send: " "%s"), xml.c_str());
+  addLog(LOG_LEVEL_DEBUG);
+}
+
+void handleUPnPServiceMetainfoservice()
+{
+  String xml = FPSTR(WEMO_METAINFOSERVICE_XML);
+  addLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, PSTR("WEMO_METAINFOSERVICE_XML"));
+  webServer->send(200, FPSTR(HDR_CTYPE_PLAIN), xml);
+  snprintf_P(log_data, sizeof(log_data), PSTR("WEMO WEMO_METAINFOSERVICE_XML send: " "%s"), xml.c_str());
+  addLog(LOG_LEVEL_DEBUG);
 }
 
 void handleUPnPsetupWemo()
 {
   addLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, PSTR(D_WEMO_SETUP));
 
-  String setup_xml = FPSTR(WEMO_SETUP_XML);
-  setup_xml.replace("{x1}", sysCfg.friendlyname[0]);
-  setup_xml.replace("{x2}", wemo_UUID());
-  setup_xml.replace("{x3}", wemo_serial());
-  webServer->send(200, FPSTR(HDR_CTYPE_XML), setup_xml);
+  String xml = FPSTR(WEMO_SETUP_XML);
+  xml.replace("{x1}", sysCfg.friendlyname[0]);
+  xml.replace("{x2}", wemo_UUID());
+  xml.replace("{x3}", wemo_serial());
+  webServer->send(200, FPSTR(HDR_CTYPE_XML), xml);
+  snprintf_P(log_data, sizeof(log_data), PSTR("WEMO WEMO_SETUP_XML send: " "%s"), xml.c_str());
+  addLog(LOG_LEVEL_DEBUG);
 }
 
 /*********************************************************************************************\
@@ -732,4 +898,3 @@ void handle_hue_api(String *path)
 }
 #endif  // USE_WEBSERVER
 #endif  // USE_EMULATION
-

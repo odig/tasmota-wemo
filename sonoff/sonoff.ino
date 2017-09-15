@@ -299,7 +299,7 @@ uint8_t pwm_idxoffset = 0;            // Allowed PWM command offset (change for 
 boolean mDNSbegun = false;
 
 char mqtt_data[MESSZ];                // MQTT publish buffer
-char log_data[TOPSZ + MESSZ];         // Logging
+char log_data[(TOPSZ) + MESSZ];     // Logging
 String Log[MAX_LOG_LINES];            // Web log buffer
 String Backlog[MAX_BACKLOG];          // Command backlog
 
